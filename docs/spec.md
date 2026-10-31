@@ -49,7 +49,7 @@ The producer is written in Python 3.12 with `confluent-kafka`.
 
 ### 3.3 Spark jobs (`spark/`)
 
-These are PySpark Structured Streaming jobs with Delta Lake: `pyspark==4.2.0` and `delta-spark==4.4.1`, running on Java 21. Spark runs on the host in `local[2]` mode, not in Docker, to save memory. One shared module holds the transforms, so the local jobs and the Databricks notebooks run the same code.
+These are PySpark Structured Streaming jobs with Delta Lake: `pyspark==4.2.0` and `delta-spark==4.4.1`, running on Java 21. Spark runs on the host in `local[4]` mode (chosen by benchmark), not in Docker, to save memory. One shared module holds the transforms, so the local jobs and the Databricks notebooks run the same code.
 
 | Layer | Input | Logic | Output mode |
 |---|---|---|---|

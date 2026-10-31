@@ -1,0 +1,202 @@
+{
+  "started_at": "2026-10-31T21:41:04+00:00",
+  "git": {
+    "commit": "b0235fc875a92898b6368b24a06bf15ccffe365f",
+    "dirty": true,
+    "worktree_sha256": "1436362134186042e0b45ad6ffa0e4d0aea660e285e4802e598b04980fe1d33c"
+  },
+  "machine": {
+    "platform": "macOS-27.0-arm64-arm-64bit",
+    "python": "3.12.15",
+    "cpus": 10
+  },
+  "spark": {
+    "master": "local[4]",
+    "trigger": "5 seconds",
+    "shuffle_partitions": 4,
+    "driver_memory": "2g"
+  },
+  "producer_max_throughput": {
+    "events": 15500,
+    "seconds": 0.786,
+    "events_per_s": 19718
+  },
+  "scenarios": [
+    {
+      "name": "rate_50",
+      "rate_per_s": 50.0,
+      "duration_s": 180.0,
+      "events_sent": 9179,
+      "dlq": 0,
+      "drained": true,
+      "probe_latency_s": {
+        "n": 180,
+        "p50": 20.605,
+        "p95": 26.0,
+        "max": 28.065,
+        "mean": 20.705,
+        "missing": 0
+      },
+      "poll_errors": 0,
+      "micro_batches": {
+        "queries": {
+          "bronze": {
+            "batches": 37,
+            "rows": 9179,
+            "ms": {
+              "n": 37,
+              "p50": 3405,
+              "p95": 7199,
+              "max": 8469,
+              "mean": 3720.946
+            }
+          },
+          "gold_edits_per_minute": {
+            "batches": 27,
+            "rows": 9179,
+            "ms": {
+              "n": 27,
+              "p50": 6411,
+              "p95": 10055,
+              "max": 10068,
+              "mean": 6849.556
+            }
+          },
+          "gold_page_edits_per_minute": {
+            "batches": 27,
+            "rows": 9179,
+            "ms": {
+              "n": 27,
+              "p50": 6528,
+              "p95": 9693,
+              "max": 10343,
+              "mean": 6693.852
+            }
+          },
+          "silver": {
+            "batches": 27,
+            "rows": 9179,
+            "ms": {
+              "n": 27,
+              "p50": 6607,
+              "p95": 8752,
+              "max": 9271,
+              "mean": 6867.741
+            }
+          }
+        },
+        "late_dropped": 0
+      },
+      "optimize": {
+        "bronze": {
+          "files_before": 111,
+          "files_after": 1,
+          "optimize_s": 2.87
+        },
+        "silver": {
+          "files_before": 27,
+          "files_after": 1,
+          "optimize_s": 2.11
+        },
+        "gold_edits_per_minute": {
+          "files_before": 10,
+          "files_after": 1,
+          "optimize_s": 1.78
+        },
+        "gold_page_edits_per_minute": {
+          "files_before": 51,
+          "files_after": 1,
+          "optimize_s": 1.62
+        }
+      }
+    },
+    {
+      "name": "rate_500",
+      "rate_per_s": 500.0,
+      "duration_s": 180.0,
+      "events_sent": 90178,
+      "dlq": 0,
+      "drained": true,
+      "probe_latency_s": {
+        "n": 180,
+        "p50": 19.545,
+        "p95": 25.934,
+        "max": 28.942,
+        "mean": 19.791,
+        "missing": 0
+      },
+      "poll_errors": 0,
+      "micro_batches": {
+        "queries": {
+          "bronze": {
+            "batches": 37,
+            "rows": 90178,
+            "ms": {
+              "n": 37,
+              "p50": 3121,
+              "p95": 6350,
+              "max": 6429,
+              "mean": 3424.595
+            }
+          },
+          "gold_edits_per_minute": {
+            "batches": 27,
+            "rows": 90178,
+            "ms": {
+              "n": 27,
+              "p50": 6331,
+              "p95": 8622,
+              "max": 12244,
+              "mean": 6747.593
+            }
+          },
+          "gold_page_edits_per_minute": {
+            "batches": 27,
+            "rows": 90178,
+            "ms": {
+              "n": 27,
+              "p50": 6180,
+              "p95": 9846,
+              "max": 11633,
+              "mean": 6739.556
+            }
+          },
+          "silver": {
+            "batches": 27,
+            "rows": 90178,
+            "ms": {
+              "n": 27,
+              "p50": 6751,
+              "p95": 9739,
+              "max": 9747,
+              "mean": 6909.63
+            }
+          }
+        },
+        "late_dropped": 0
+      },
+      "optimize": {
+        "bronze": {
+          "files_before": 111,
+          "files_after": 1,
+          "optimize_s": 2.09
+        },
+        "silver": {
+          "files_before": 27,
+          "files_after": 1,
+          "optimize_s": 2.09
+        },
+        "gold_edits_per_minute": {
+          "files_before": 9,
+          "files_after": 1,
+          "optimize_s": 1.64
+        },
+        "gold_page_edits_per_minute": {
+          "files_before": 9,
+          "files_after": 1,
+          "optimize_s": 1.68
+        }
+      }
+    }
+  ]
+}

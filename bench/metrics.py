@@ -82,3 +82,27 @@ def make_probe(template: str, *, wiki: str, seq: int, now: datetime) -> str:
     event = json.loads(restamp(template, now))
     event.update({"wiki": wiki, "title": f"probe-{seq}", "bot": False, "type": "edit"})
     return json.dumps(event)
+
+
+def _pct_change(old, new) -> float | None:
+    if old in (None, 0) or new is None:
+        return None
+    return round((new - old) / old * 100, 1)
+
+
+def compare(baseline: dict, result: dict) -> list[tuple]:
+    """Rows (scenario, metric, baseline, new, % change) for scenarios present in both."""
+    base = {s["name"]: s for s in baseline.get("scenarios", [])}
+    rows = []
+    for s in result.get("scenarios", []):
+        b = base.get(s["name"])
+        if b is None:
+            continue
+        for key in ("p50", "p95"):
+            old, new = b["probe_latency_s"].get(key), s["probe_latency_s"].get(key)
+            rows.append((s["name"], f"latency {key} s", old, new, _pct_change(old, new)))
+        for query, stats in s["micro_batches"]["queries"].items():
+            old = b["micro_batches"]["queries"].get(query, {}).get("ms", {}).get("p50")
+            new = stats["ms"]["p50"]
+            rows.append((s["name"], f"{query} batch p50 ms", old, new, _pct_change(old, new)))
+    return rows

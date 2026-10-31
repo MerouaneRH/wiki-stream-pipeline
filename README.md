@@ -93,7 +93,21 @@ make lint
 
 ### Benchmark (local, `make bench`)
 
-Setup: MacBook (10 CPUs), Spark `local[2]`, 2 GB driver, 10 s trigger, and all 4 streaming queries in one driver. Each scenario runs 3 minutes against its own topic and lakehouse. Latency is measured with probe events, 1/s: the time from producing the probe until it is visible in gold, read with delta-rs every 0.5 s.
+Setup: MacBook (10 CPUs), 2 GB driver, and all 4 streaming queries in one driver. Each scenario runs 3 minutes against its own topic and lakehouse. Latency is measured with probe events, 1/s: the time from producing the probe until it is visible in gold, read with delta-rs every 0.5 s. Each configuration was run once, so small differences can be noise.
+
+**Tuning: p95 latency, producer → gold**
+
+| Config | 50 events/s | 500 events/s | Batch p50, silver (500/s) | Notes |
+|---|---|---|---|---|
+| Baseline: `local[2]`, 10 s trigger | 41.9 s | 42.9 s | 11.3 s | 4 queries on 2 cores; batches longer than the trigger |
+| **`local[4]`, 10 s trigger (default)** | **33.6 s** (-20%) | **33.4 s** (-22%) | 6.6 s | batches about 35% under the trigger, leaving headroom |
+| `local[4]`, 5 s trigger | 26.0 s (-38%) | 25.9 s (-40%) | 6.8 s | batches longer than the trigger, CPU always busy, about 40% more small files |
+
+- **The default is `local[4]` with a 10 s trigger.** It gives most of the gain while keeping headroom for load spikes.
+- **For lower latency on a quiet machine:** `TRIGGER="5 seconds" make spark`.
+- **Results files:** each experiment is in [`bench/experiments/`](bench/experiments/).
+
+**Baseline in detail** (`local[2]`, 10 s trigger)
 
 | Metric | 50 events/s (live rate) | 500 events/s (10×) |
 |---|---|---|
@@ -110,9 +124,9 @@ The producer's maximum throughput (replaying recorded events into Redpanda) is a
 
 - **The latency target (p95 < 60 s) is met at both rates.**
 - **Latency barely changes with 10× more data.** The bottleneck is fixed per-batch overhead: 4 queries share 2 cores, and each batch pays for a Delta commit or MERGE. Event volume isn't the limit.
-- **Micro-batches take about as long as the 10 s trigger.** An event passes through 3 chained queries (bronze → silver → gold), so latency is roughly 3 batch cycles.
+- **Micro-batches take about as long as the 10 s trigger.** An event passes through 3 chained queries (bronze → silver → gold), so latency is roughly 3 batch cycles. This finding led to the tuning above.
 
-Raw results, with the commit SHA, are in [`bench/results.json`](bench/results.json). The first run is kept as [`bench/baseline.json`](bench/baseline.json).
+Raw results, with the commit SHA, are in [`bench/results.json`](bench/results.json) (the current default config). The first run is kept as [`bench/baseline.json`](bench/baseline.json).
 
 ## Security notes
 

@@ -25,7 +25,14 @@ import pyarrow.compute as pc
 from confluent_kafka.admin import AdminClient, NewTopic
 from deltalake import DeltaTable
 
-from bench.metrics import batch_stats, make_probe, percentiles, probe_latencies, restamp
+from bench.metrics import (
+    batch_stats,
+    compare,
+    make_probe,
+    percentiles,
+    probe_latencies,
+    restamp,
+)
 from producer.main import KafkaSink, run
 from producer.replay import iter_file
 from producer.routing import DLQ_TOPIC, RAW_TOPIC
@@ -247,6 +254,9 @@ def main() -> None:
     p.add_argument("--duration", type=float, default=180)
     p.add_argument("--bootstrap", default=os.getenv("KAFKA_BOOTSTRAP", "127.0.0.1:19092"))
     p.add_argument("--replay-dir", default="data/replay")
+    p.add_argument(
+        "--out", default=str(RESULTS), help="results file (experiments: bench/experiments/)"
+    )
     args = p.parse_args()
 
     lines = [line for f in sorted(Path(args.replay_dir).glob("*.ndjson")) for line in iter_file(f)]
@@ -264,8 +274,8 @@ def main() -> None:
             "cpus": os.cpu_count(),
         },
         "spark": {
-            "master": os.getenv("SPARK_MASTER", "local[2]"),
-            "trigger": "10 seconds",
+            "master": os.getenv("SPARK_MASTER", "local[4]"),
+            "trigger": os.getenv("TRIGGER", "10 seconds"),
             "shuffle_partitions": 4,
             "driver_memory": os.getenv("SPARK_DRIVER_MEMORY", "2g"),
         },
@@ -281,18 +291,25 @@ def main() -> None:
         s["optimize"] = optimize[s["name"]]
     results["scenarios"] = scenarios
 
-    RESULTS.write_text(json.dumps(results, indent=2) + "\n")
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(results, indent=2) + "\n")
     if not BASELINE.exists():
-        shutil.copy(RESULTS, BASELINE)
-        log(f"wrote {RESULTS} and {BASELINE} (first run = baseline)")
+        shutil.copy(out, BASELINE)
+        log(f"wrote {out} and {BASELINE} (first run = baseline)")
     else:
-        log(f"wrote {RESULTS}")
+        log(f"wrote {out}")
     for s in scenarios:
         lat = s["probe_latency_s"]
         log(
             f"{s['name']}: p50={lat['p50']}s p95={lat['p95']}s max={lat['max']}s "
             f"missing={lat['missing']}"
         )
+    if BASELINE.exists() and out != BASELINE:
+        log("vs baseline:")
+        for name, metric, old, new, change in compare(json.loads(BASELINE.read_text()), results):
+            pct = "n/a" if change is None else f"{change:+}%"
+            log(f"  {name:9} {metric:38} {old!s:>9} -> {new!s:>9}  ({pct})")
 
 
 if __name__ == "__main__":

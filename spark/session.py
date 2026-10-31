@@ -13,7 +13,8 @@ KAFKA_PACKAGE = "org.apache.spark:spark-sql-kafka-0-10_2.13:4.2.0"
 def build_spark(app_name: str, *, kafka: bool = False, master: str | None = None) -> SparkSession:
     builder = (
         SparkSession.builder.appName(app_name)
-        .master(master or os.getenv("SPARK_MASTER", "local[2]"))
+        # local[4]: benchmarked 20% lower p95 latency than local[2] (bench/experiments/)
+        .master(master or os.getenv("SPARK_MASTER", "local[4]"))
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog"

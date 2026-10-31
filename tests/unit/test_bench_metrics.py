@@ -5,6 +5,7 @@ import pytest
 
 from bench.metrics import (
     batch_stats,
+    compare,
     make_probe,
     percentiles,
     probe_latencies,
@@ -82,3 +83,29 @@ def test_make_probe():
         "edit",
     )
     assert validate(out) is None
+
+
+def test_compare_reports_change_per_scenario():
+    def result(p50, p95, silver_ms):
+        return {
+            "scenarios": [
+                {
+                    "name": "rate_50",
+                    "probe_latency_s": {"p50": p50, "p95": p95},
+                    "micro_batches": {"queries": {"silver": {"ms": {"p50": silver_ms}}}},
+                }
+            ]
+        }
+
+    rows = compare(result(30.0, 40.0, 10000), result(15.0, 20.0, 4000))
+    assert rows == [
+        ("rate_50", "latency p50 s", 30.0, 15.0, -50.0),
+        ("rate_50", "latency p95 s", 40.0, 20.0, -50.0),
+        ("rate_50", "silver batch p50 ms", 10000, 4000, -60.0),
+    ]
+
+
+def test_compare_skips_scenarios_missing_from_baseline():
+    base = {"scenarios": []}
+    new = {"scenarios": [{"name": "x", "probe_latency_s": {}, "micro_batches": {"queries": {}}}]}
+    assert compare(base, new) == []
