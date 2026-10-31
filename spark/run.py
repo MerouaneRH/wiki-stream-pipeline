@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import signal
 import threading
 import time
@@ -12,7 +13,7 @@ from spark.config import Config
 from spark.jobs.bronze import start_bronze
 from spark.jobs.gold import start_gold
 from spark.jobs.silver import start_silver
-from spark.progress import summarize
+from spark.progress import JsonlProgressListener, summarize
 from spark.session import build_spark
 from spark.transforms import ensure_bronze_table, ensure_silver_table
 
@@ -35,6 +36,8 @@ def main(argv: list[str] | None = None) -> None:
     cfg = Config.from_env()
     spark = build_spark("wiki-stream", kafka="bronze" in args.jobs)
     spark.sparkContext.setLogLevel("WARN")
+    if progress_log := os.getenv("PROGRESS_LOG"):
+        spark.streams.addListener(JsonlProgressListener(progress_log))
     ensure_bronze_table(spark, cfg)
     ensure_silver_table(spark, cfg)
     jobs = sorted(args.jobs, key=list(JOBS).index)

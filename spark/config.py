@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from producer.routing import RAW_TOPIC
+
 log = logging.getLogger(__name__)
 
 DEV_SALT = "local-dev-salt"
@@ -26,6 +28,8 @@ class Config:
     salt: str
     # "catalog.schema" to use named tables (Databricks Unity Catalog); None = paths.
     namespace: str | None = None
+    # Kafka topic read by bronze; benchmarks point this at a throwaway topic.
+    topic: str = RAW_TOPIC
 
     def table(self, name: str) -> str:
         return str(Path(self.lakehouse) / name)
@@ -50,4 +54,5 @@ class Config:
             trigger=parse_trigger(os.getenv("TRIGGER", "10 seconds")),
             salt=salt,
             namespace=os.getenv("TABLE_NAMESPACE") or None,
+            topic=os.getenv("KAFKA_TOPIC", RAW_TOPIC),
         )

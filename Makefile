@@ -76,3 +76,8 @@ db-run:  ## run the replay job (bronze -> silver -> gold) and wait for it
 
 db-destroy:  ## delete the bundle's job, volumes and schema (asks for confirmation)
 	databricks bundle destroy
+
+.PHONY: bench
+
+bench:  ## benchmark (needs `make up` and data/replay): 50/s and 500/s, 3 min each
+	uv run python -m bench.run_bench --rates 50 500 --duration 180

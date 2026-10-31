@@ -91,7 +91,28 @@ make lint
 | Databricks rerun | 0 new rows in any layer, table history unchanged (idempotent) |
 | Dependency audit (`pip-audit`) | no known vulnerabilities |
 
-End-to-end latency and throughput benchmarks are not measured yet.
+### Benchmark (local, `make bench`)
+
+Setup: MacBook (10 CPUs), Spark `local[2]`, 2 GB driver, 10 s trigger, and all 4 streaming queries in one driver. Each scenario runs 3 minutes against its own topic and lakehouse. Latency is measured with probe events, 1/s: the time from producing the probe until it is visible in gold, read with delta-rs every 0.5 s.
+
+| Metric | 50 events/s (live rate) | 500 events/s (10×) |
+|---|---|---|
+| Events processed | 9,179 | 90,177 |
+| Latency producer → gold, p50 / p95 / max | 33.6 / 41.9 / 48.0 s | 34.9 / 42.9 / 45.9 s |
+| Probes lost | 0 / 180 | 0 / 180 |
+| Late rows dropped by the watermark | 0 | 0 |
+| Micro-batch p50 / p95: bronze | 6.6 / 9.6 s | 6.6 / 14.8 s |
+| Micro-batch p50 / p95: silver | 9.9 / 16.2 s | 11.3 / 15.0 s |
+| Micro-batch p50 / p95: gold (edits) | 9.9 / 15.7 s | 10.4 / 15.6 s |
+| Delta files before → after `OPTIMIZE` (bronze / silver / gold) | 57→1 / 17→1 / 9→1 | 57→1 / 16→1 / 7→1 |
+
+The producer's maximum throughput (replaying recorded events into Redpanda) is about 20,700 events/s.
+
+- **The latency target (p95 < 60 s) is met at both rates.**
+- **Latency barely changes with 10× more data.** The bottleneck is fixed per-batch overhead: 4 queries share 2 cores, and each batch pays for a Delta commit or MERGE. Event volume isn't the limit.
+- **Micro-batches take about as long as the 10 s trigger.** An event passes through 3 chained queries (bronze → silver → gold), so latency is roughly 3 batch cycles.
+
+Raw results, with the commit SHA, are in [`bench/results.json`](bench/results.json). The first run is kept as [`bench/baseline.json`](bench/baseline.json).
 
 ## Security notes
 
@@ -107,6 +128,7 @@ spark/             transforms, gold aggregates, storage modes, jobs, Databricks 
 dashboard/         Streamlit app, data shaping, Altair charts
 infra/             docker-compose.yml, topic creation
 tests/             unit/, spark/, integration/
+bench/             benchmark runner, metrics, results.json, baseline.json
 docs/              research.md, spec.md
 databricks.yml     Databricks Asset Bundle
 ```
