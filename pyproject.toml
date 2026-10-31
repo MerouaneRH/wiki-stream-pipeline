@@ -1,0 +1,55 @@
+[project]
+name = "wiki-stream-pipeline"
+version = "0.1.0"
+description = "Wikipedia live edits: Redpanda -> Spark Structured Streaming -> Delta -> Streamlit"
+requires-python = ">=3.12"
+dependencies = [
+    "confluent-kafka>=2.6",
+    "requests>=2.32",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Shipped to Databricks; the dashboard is local-only.
+packages = ["producer", "spark"]
+
+[dependency-groups]
+spark = [
+    "pyspark==4.2.0",
+    "delta-spark==4.4.1",
+]
+dashboard = [
+    "streamlit==1.66.1",
+    # security: pillow < 13 has 39 advisories (decoder bugs); streamlit 1.66.1 allows 13
+    "pillow>=13.0.0",
+    "deltalake==1.6.6",
+    "pandas==3.0.6",
+]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+default-groups = ["dev", "spark", "dashboard"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-m 'not integration'"
+markers = [
+    "integration: needs the docker compose stack running",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "BLE"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]

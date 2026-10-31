@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+.env
+data/
+checkpoints/
+lakehouse/
+.DS_Store
+
+# Private dev journal (not shared)
+docs/dev-journal.md
+spark-warehouse/
+dist/
+.databricks/

@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "mission/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint-unit:
+    name: lint + unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest -q tests/unit
+      - run: uv build --wheel
+
+  spark:
+    name: spark tests (local mode)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache Delta/Kafka jars (Ivy)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ivy2.5.2
+          key: ivy-${{ hashFiles('uv.lock', 'spark/session.py') }}
+      - run: uv sync --locked
+      - run: uv run pytest -q tests/spark
+
+  integration:
+    name: integration (Redpanda)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked
+      - name: Start Redpanda and create topics
+        run: make up
+      - run: uv run pytest -q -m integration
+      - name: Redpanda logs on failure
+        if: failure()
+        run: docker compose -f infra/docker-compose.yml logs --tail=200 redpanda
+      - if: always()
+        run: make clean

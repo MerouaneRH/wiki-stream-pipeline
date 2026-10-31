@@ -1,0 +1,63 @@
+# Databricks Asset Bundle: replay recorded events on Databricks Free Edition (serverless).
+# Deploy: make db-deploy   Upload replay files: make db-upload   Run: make db-run
+bundle:
+  name: wiki-stream
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for the replay tables
+    default: workspace
+  schema:
+    description: Schema for bronze/silver/gold tables and volumes
+    default: wiki_stream
+
+artifacts:
+  wheel:
+    type: whl
+    build: uv build --wheel
+    path: .
+
+resources:
+  schemas:
+    wiki_stream:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: Wikipedia live edits, replayed from NDJSON (bronze/silver/gold)
+
+  volumes:
+    raw:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.wiki_stream.name}
+      name: raw
+      volume_type: MANAGED
+      comment: NDJSON replay files recorded by the producer
+    checkpoints:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.wiki_stream.name}
+      name: checkpoints
+      volume_type: MANAGED
+      comment: Structured Streaming checkpoints
+
+  jobs:
+    replay:
+      name: wiki-stream-replay
+      tasks:
+        - task_key: replay
+          environment_key: default
+          spark_python_task:
+            python_file: spark/databricks/replay_job.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --schema
+              - ${resources.schemas.wiki_stream.name}
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ./dist/*.whl
+
+targets:
+  dev:
+    default: true
