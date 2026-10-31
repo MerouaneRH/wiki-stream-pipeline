@@ -45,6 +45,8 @@ def live(minutes: int) -> None:
         )
         return
     pages = load(LAKEHOUSE, data.PAGES_TABLE, since)
+    complete = data.complete_minutes(edits, now=now)
+    last_full = (now - data.SETTLE).replace(second=0, microsecond=0) - timedelta(minutes=1)
     k = data.kpis(edits, now=now)
 
     cols = st.columns(5)
@@ -56,14 +58,28 @@ def live(minutes: int) -> None:
         border=True,
         height="stretch",
     )
+    in_range = f"Over the selected time range ({range_label or '15 min'})."
     cols[1].metric(
         "Bot share",
         "n/a" if k.bot_share is None else f"{k.bot_share:.0%}",
+        help=f"Share of edits made by bots. {in_range}",
         border=True,
         height="stretch",
     )
-    cols[2].metric("Active wikis", f"{k.active_wikis:,}", border=True, height="stretch")
-    cols[3].metric("Net bytes added", f"{k.net_bytes:+,}", border=True, height="stretch")
+    cols[2].metric(
+        "Active wikis",
+        f"{k.active_wikis:,}",
+        help=f"Wikis with at least one event. {in_range}",
+        border=True,
+        height="stretch",
+    )
+    cols[3].metric(
+        "Net bytes added",
+        f"{k.net_bytes:+,}",
+        help=f"Bytes added minus bytes removed. {in_range}",
+        border=True,
+        height="stretch",
+    )
     cols[4].metric(
         "Pipeline freshness",
         "n/a" if k.freshness_s is None else f"{k.freshness_s:.0f} s",
@@ -75,14 +91,18 @@ def live(minutes: int) -> None:
     left, right = st.columns(2)
     with left.container(border=True):
         st.subheader("Edits per minute", anchor=False)
-        per_minute = data.fill_minutes(data.edits_per_minute(edits), since, until)
+        per_minute = data.fill_minutes(data.edits_per_minute(complete), since, last_full)
         st.altair_chart(charts.edits_line(per_minute), alt="Edits per minute, humans vs bots")
     with right.container(border=True):
         st.subheader("Bytes added vs removed", anchor=False)
+        bytes_pm = data.fill_minutes(data.bytes_per_minute(complete), since, last_full)
         st.altair_chart(
-            charts.bytes_bars(data.bytes_per_minute(edits)),
-            alt="Bytes added (up) and removed (down) per minute",
+            charts.bytes_bars(bytes_pm), alt="Bytes added (up) and removed (down) per minute"
         )
+    st.caption(
+        "Charts and the edits card show settled minutes only (about 1 minute behind), "
+        "so every total is complete."
+    )
 
     left, right = st.columns(2)
     with left.container(border=True):

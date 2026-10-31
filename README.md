@@ -63,7 +63,7 @@ make db-run      # Auto Loader -> bronze -> silver -> gold (AvailableNow)
 - **Gold uses update mode plus a `foreachBatch` MERGE.** An append-mode window shows up only after the watermark passes (about 3 minutes). Update mode shows rows after every micro-batch and corrects them when late events arrive. The MERGE target is pruned to `window_start >= oldest window in the batch`, so its cost doesn't grow with the table.
 - **Late events:** 1-minute windows with a 2-minute watermark. Events older than the watermark are dropped from gold, counted in `numRowsDroppedByWatermark`, and still kept in silver.
 - **Dead-letter topic:** invalid events go to `wiki.edits.dlq` unchanged, with the reason in an `error` header.
-- **Privacy:** silver stores `sha256(salt + user)`. Raw usernames and comments never leave bronze, and the dashboard shows aggregates only.
+- **Privacy:** silver stores `sha256(salt + user)`. Raw usernames and comments never leave bronze. Gold leaves out User and User talk pages (namespaces 2 and 3), because their titles contain usernames. The dashboard shows aggregates only.
 - **One code path, two storage modes:** `spark/storage.py` addresses tables by path (local) or by Unity Catalog name (Databricks). The code ships to Databricks as a wheel, so `foreachBatch` can import it on Spark Connect.
 
 The full spec with its acceptance criteria is in [`docs/spec.md`](docs/spec.md). Sources and platform research are in [`docs/research.md`](docs/research.md).

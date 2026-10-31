@@ -56,7 +56,7 @@ def test_per_minute_splits_bot_and_human_and_counts_edits_plus_new_pages():
 
 
 def test_kpis_use_last_complete_minute_and_previous_for_delta():
-    k = data.kpis(EDITS, now=NOW)
+    k = data.kpis(EDITS, now=NOW, settle=timedelta(0))
     assert k.edits_last_minute == 11  # minute 9: 6 + 4 + 1
     assert k.edits_delta == 11 - 16  # minute 8: 12 + 4
     assert k.bot_share == pytest.approx(5 / 29)  # bots 4+1 over all 29 edits
@@ -118,3 +118,17 @@ def test_load_reads_only_recent_windows(tmp_path):
 
 def test_load_missing_table_returns_none(tmp_path):
     assert data.load_table(tmp_path, "gold_edits_per_minute", since=minute(0)) is None
+
+
+def test_complete_minutes_drops_the_open_minute():
+    # NOW = 10:10:30, minute 10 still open
+    out = data.complete_minutes(EDITS, now=NOW, settle=timedelta(0))
+    assert set(out["window_start"]) == {minute(8), minute(9)}
+
+
+def test_minutes_count_as_complete_only_once_settled():
+    # gold lags ~35 s behind the clock (benchmark), so a minute that just ended is not
+    # fully counted yet: by default it must have ended at least 60 s ago
+    out = data.complete_minutes(EDITS, now=NOW)  # 10:10:30 -> cutoff 10:09:30
+    assert set(out["window_start"]) == {minute(8)}
+    assert data.kpis(EDITS, now=NOW).edits_last_minute == 16  # minute 8: 12 + 4

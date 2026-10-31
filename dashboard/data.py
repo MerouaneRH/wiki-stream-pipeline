@@ -15,6 +15,10 @@ from deltalake import DeltaTable
 EDITS_TABLE = "gold_edits_per_minute"
 PAGES_TABLE = "gold_page_edits_per_minute"
 
+# Gold lags the clock (benchmark p95 producer->gold ~34 s with the default config).
+# A minute counts as complete only once it ended at least this long ago.
+SETTLE = timedelta(seconds=60)
+
 
 def load_table(lakehouse: str | Path, name: str, since: datetime) -> pd.DataFrame | None:
     """Rows with window_start >= since, or None if the table does not exist yet."""
@@ -43,6 +47,11 @@ def edits_per_minute(df: pd.DataFrame) -> pd.DataFrame:
     )
     out.columns.name = None
     return out
+
+
+def complete_minutes(df: pd.DataFrame, now: datetime, settle: timedelta = SETTLE) -> pd.DataFrame:
+    """Keep settled minutes only, so charts don't show a misleading dip at the end."""
+    return df[df["window_end"] <= now - settle]
 
 
 def fill_minutes(per_minute: pd.DataFrame, since: datetime, until: datetime) -> pd.DataFrame:
@@ -93,12 +102,13 @@ class Kpis:
     freshness_s: float | None
 
 
-def kpis(df: pd.DataFrame, now: datetime) -> Kpis:
-    """Headline numbers. 'Last minute' is the latest window that has fully ended."""
+def kpis(df: pd.DataFrame, now: datetime, settle: timedelta = SETTLE) -> Kpis:
+    """Headline numbers. 'Last minute' is the latest settled window (see SETTLE)."""
     if df.empty:
         return Kpis(0, None, None, 0, 0, None)
     edits = df.assign(edits=_edits(df))
-    per_minute = edits[edits["window_end"] <= now].groupby("window_start")["edits"].sum()
+    settled = edits[edits["window_end"] <= now - settle]
+    per_minute = settled.groupby("window_start")["edits"].sum()
     last = prev = None
     if not per_minute.empty:
         last_start = per_minute.index.max()

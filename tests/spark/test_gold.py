@@ -137,6 +137,9 @@ def test_page_edits_per_minute_counts_edits_and_new_pages_only(spark, tmp_path):
             edit("00:15", title="A", kind="new"),
             edit("00:25", title="A", kind="categorize"),
             edit("00:35", title="B"),
+            # User / User talk pages carry usernames in the title: never in gold
+            make_line(**{"meta.dt": ts("00:40"), "namespace": 2, "title": "User:Someone/sandbox"}),
+            make_line(**{"meta.dt": ts("00:45"), "namespace": 3, "title": "User talk:Someone"}),
         ]
     )
     p.run_gold()

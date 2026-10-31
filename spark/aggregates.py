@@ -12,6 +12,7 @@ from spark import storage
 from spark.config import Config
 
 WINDOW = "1 minute"
+USER_NAMESPACES = (2, 3)
 WATERMARK = "2 minutes"
 
 EDITS_TABLE = "gold_edits_per_minute"
@@ -54,6 +55,8 @@ def page_edits_per_minute(silver: DataFrame) -> DataFrame:
     agg = (
         _windowed(silver)
         .filter(F.col("type").isin("edit", "new"))
+        # User (2) and User talk (3) page titles contain usernames: keep them out of gold
+        .filter(~F.col("namespace").isin(*USER_NAMESPACES))
         .groupBy(F.window("event_ts", WINDOW), "wiki", "title")
         .agg(F.count(F.lit(1)).alias("edit_count"))
     )

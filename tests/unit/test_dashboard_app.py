@@ -52,6 +52,7 @@ def test_renders_kpis_from_gold(monkeypatch, tmp_path):
     at = app(monkeypatch, tmp_path).run()
     assert not at.exception
     labels = {m.label: m.value for m in at.metric}
-    assert labels["Edits in the last full minute"] == "11"
+    # settled minute = ended >= 60 s ago: the window starting 2 minutes ago (9 + 1)
+    assert labels["Edits in the last full minute"] == "10"
     assert labels["Active wikis"] == "1"
     assert len(at.dataframe) == 1
