@@ -1,5 +1,7 @@
 # Wikipedia live edits: a streaming lakehouse
 
+[![ci](https://github.com/MerouaneRH/wiki-stream-pipeline/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MerouaneRH/wiki-stream-pipeline/actions/workflows/ci.yml)
+
 Every edit made on any Wikipedia, worldwide, streamed live (about 50 events/s). The events flow through **Redpanda**, **Spark Structured Streaming** and a **Delta Lake** medallion (bronze / silver / gold) into a live **Streamlit** dashboard. The same Spark code is replayed on **Databricks Free Edition** (serverless, Unity Catalog).
 
 ```mermaid
